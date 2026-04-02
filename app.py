@@ -41,7 +41,9 @@ PLANT_CLASSES = {
     'daisy', 'sunflower', 'rose', 'tulip', 'lily', 'acorn', 'fig', 'pineapple',
     'banana', 'orange', 'lemon', 'pomegranate', 'strawberry', 'broccoli',
     'cauliflower', 'cabbage', 'artichoke', 'bell_pepper', 'chili', 'mushroom',
-    'cardoon', 'artichoke', 'buckeye', 'conker', 'custard_apple', 'jackfruit'
+    'cardoon', 'artichoke', 'buckeye', 'conker', 'custard_apple', 'jackfruit',
+    'zucchini', 'squash', 'gourd', 'kale', 'spinach', 'lettuce', 'basil', 'cilantro',
+    'parsley', 'mint', 'thyme', 'rosemary', 'sage', 'oregano', 'potted_plant'
 }
 
 def is_mostly_botanical_color(img_array):
@@ -63,7 +65,8 @@ def is_mostly_botanical_color(img_array):
     
     # Heuristic: Plant leaves usually have G > B. 
     # Let's be a bit more flexible to include yellowing leaves.
-    is_botanical = (g > b * 0.9) and (g > 40) # Ensure it's not too dark
+    is_botanical = (g > b * 0.8) and (g > 30) # Even more flexible
+    print(f"Color check: R={r:.2f}, G={g:.2f}, B={b:.2f}, is_botanical={is_botanical}")
     return is_botanical
 
 def is_plant_leaf(img_bytes):
@@ -80,6 +83,7 @@ def is_plant_leaf(img_bytes):
         
         # Color check
         if not is_mostly_botanical_color(np.expand_dims(x_raw, axis=0)):
+            print("Image colors do not match a plant or leaf profile.")
             return False, "Image colors do not match a plant or leaf profile."
 
         # Preprocess for MobileNetV2
@@ -101,8 +105,8 @@ def is_plant_leaf(img_bytes):
             
             # Check for keywords in the label
             if any(plant_keyword in label.lower() for plant_keyword in PLANT_CLASSES):
-                # Stricter confidence threshold: 0.20
-                if score > 0.20:
+                # Stricter confidence threshold: 0.15
+                if score > 0.15:
                     is_plant = True
                     break
         
@@ -111,8 +115,8 @@ def is_plant_leaf(img_bytes):
         # If the top result is very high confidence and NOT a plant, reject it
         # even if a lower result matched a keyword.
         first_label, first_score = decoded[0][1], decoded[0][2]
-        if first_score > 0.5 and not any(pk in first_label.lower() for pk in PLANT_CLASSES):
-            return False, f"Detected {first_label.replace('_', ' ')} with high confidence. Not a plant."
+        if first_score > 0.7 and not any(pk in first_label.lower() for pk in PLANT_CLASSES):
+            return False, f"Detected {first_label.replace('_', ' ')} with very high confidence. Not a plant."
 
         if is_plant:
             return True, "Plant detected"
