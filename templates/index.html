@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tomato AI - Solar Botanical</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0f0d;
+            --glass-bg: rgba(15, 25, 20, 0.6);
+            --glass-border: rgba(74, 222, 128, 0.1);
+            --neon-accent: #4ade80;
+            /* Emerald */
+            --neon-secondary: #ffcc33;
+            /* Amber */
+            --text-main: #f0fdf4;
+            --text-muted: #86efac;
+            --hud-blue: rgba(74, 222, 128, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            perspective: 1000px;
+        }
+
+        /* Scroll Progress Bar */
+        .scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--neon-accent), var(--neon-secondary));
+            width: 0%;
+            z-index: 9999;
+            box-shadow: 0 0 10px var(--neon-accent);
+        }
+
+        /* Ambient Base */
+        .ambient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -3;
+            background: radial-gradient(circle at 50% 50%, #0d1a14 0%, var(--bg-color) 100%);
+            overflow: hidden;
+        }
+
+        /* Floating Botanical Seeds */
+        #seed-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .botanical-seed {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            will-change: transform;
+            opacity: 0;
+            transition: opacity 2s ease-in;
+        }
+
+        /* Sections */
+        .hero-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            width: 100%;
+            position: relative;
+            z-index: 10;
+            padding-top: 2rem;
+        }
+
+        .features-section {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            position: relative;
+            z-index: 10;
+            gap: 2rem;
+        }
+
+        /* Main Container - Anti-Gravity Glass Card */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            padding: 3rem;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow:
+                0 30px 60px rgba(0, 0, 0, 0.8),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                inset 0 0 20px rgba(74, 222, 128, 0.05);
+            /* Soft emerald tint */
+            position: relative;
+            z-index: 10;
+            transition: box-shadow 0.5s ease;
+        }
+
+        /* Feature Cards */
+        .feature-card {
+            background: rgba(10, 20, 15, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(74, 222, 128, 0.15);
+            border-radius: 4px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 700px;
+            text-align: left;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            transform-style: preserve-3d;
+            transform: perspective(1000px) rotateX(-90deg) translateY(50px);
+            opacity: 0;
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .feature-card.in-view {
+            transform: perspective(1000px) rotateX(0deg) translateY(0);
+            opacity: 1;
+        }
+
+        .feature-card h3 {
+            font-family: 'Space Mono', monospace;
+            color: var(--neon-accent);
+            text-transform: uppercase;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+        }
+
+        .feature-card p {
+            color: var(--text-main);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            opacity: 0.85;
+        }
+
+        /* Scanline Overlay over Glass Background */
+        .glass-panel::after,
+        .feature-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom,
+                    rgba(255, 255, 255, 0),
+                    rgba(255, 255, 255, 0) 50%,
+                    rgba(74, 222, 128, 0.05) 50%,
+                    rgba(74, 222, 128, 0.05));
+            background-size: 100% 4px;
+            z-index: -1;
+            border-radius: 6px;
+            pointer-events: none;
+            opacity: 0.5;
+            animation: scanline 10s linear infinite;
+        }
+
+        /* Staggered Animations */
+        .stagger-item {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .stagger-in-view .stagger-item {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .stagger-item:nth-child(1) {
+            transition-delay: 0.1s;
+        }
+
+        .stagger-item:nth-child(2) {
+            transition-delay: 0.2s;
+        }
+
+        .stagger-item:nth-child(3) {
+            transition-delay: 0.3s;
+        }
+
+        .stagger-item:nth-child(4) {
+            transition-delay: 0.4s;
+        }
+
+        @keyframes scanline {
+            0% {
+                background-position: 0 0;
+            }
+
+            100% {
+                background-position: 0 100%;
+            }
+        }
+
+        /* UI Corner Brackets */
+        .corner-bracket {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 2px solid var(--neon-accent);
+            z-index: 25;
+            pointer-events: none;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+
+        .bracket-tl {
+            top: -2px;
+            left: -2px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .bracket-tr {
+            top: -2px;
+            right: -2px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .bracket-bl {
+            bottom: -2px;
+            left: -2px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .bracket-br {
+            bottom: -2px;
+            right: -2px;
+            border-left: none;
+            border-top: none;
+        }
+
+        /* Smooth Breathing Pulse during processing */
+        .glass-panel.processing {
+            animation: pulseGlowBody 2s ease-in-out infinite alternate;
+        }
+
+        .glass-panel.processing .corner-bracket {
+            border-color: var(--neon-secondary);
+            box-shadow: 0 0 10px var(--neon-secondary);
+        }
+
+        @keyframes pulseGlowBody {
+            0% {
+                box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), inset 0 0 10px rgba(74, 222, 128, 0.1);
+                border-color: rgba(74, 222, 128, 0.2);
+            }
+
+            100% {
+                box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), inset 0 0 40px rgba(74, 222, 128, 0.3), 0 0 30px rgba(74, 222, 128, 0.2);
+                border-color: rgba(74, 222, 128, 0.6);
+            }
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 2.5rem;
+            letter-spacing: -1px;
+            background: linear-gradient(to right, #fff, #bbf7d0);
+            /* slight green tint */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transform: translateZ(30px);
+            position: relative;
+            z-index: 30;
+        }
+
+        h1 span {
+            color: var(--neon-accent);
+            -webkit-text-fill-color: var(--neon-accent);
+            text-shadow: 0 0 20px rgba(74, 222, 128, 0.4);
+        }
+
+        /* Upload Area */
+        .upload-zone {
+            border: 1px dashed var(--hud-blue);
+            border-radius: 4px;
+            padding: 3rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: rgba(74, 222, 128, 0.02);
+            transform: translateZ(40px);
+            position: relative;
+            overflow: hidden;
+            z-index: 30;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--neon-secondary);
+            background: rgba(255, 204, 51, 0.05);
+            /* amber tint on hover */
+            box-shadow: 0 0 20px rgba(255, 204, 51, 0.15) inset;
+            transform: translateZ(50px) scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+            color: var(--neon-accent);
+            filter: drop-shadow(0 0 8px var(--neon-accent));
+        }
+
+        .upload-zone:hover .upload-icon {
+            transform: translateY(-5px);
+            color: var(--neon-secondary);
+            filter: drop-shadow(0 0 15px var(--neon-secondary));
+        }
+
+        .upload-text {
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+            font-size: 1rem;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            color: var(--neon-accent);
+            letter-spacing: 1px;
+            transition: color 0.3s ease;
+        }
+
+        .upload-zone:hover .upload-text {
+            color: var(--neon-secondary);
+        }
+
+        .upload-hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Image Preview Area & Holographic Scan */
+        #preview-container {
+            display: none;
+            margin-top: 1.5rem;
+            transform: translateZ(35px);
+            position: relative;
+            z-index: 30;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+        }
+
+        #image-preview {
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--neon-accent);
+            max-height: 250px;
+            object-fit: contain;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        #image-preview:hover {
+            opacity: 0.8;
+        }
+
+        /* The hardware scanner bar element */
+        .scanner-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--neon-accent);
+            box-shadow: 0 0 15px 4px rgba(74, 222, 128, 0.6);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 40;
+        }
+
+        .processing .scanner-bar {
+            opacity: 1;
+            animation: holoScan 1.5s linear infinite alternate;
+        }
+
+        @keyframes holoScan {
+            0% {
+                top: 0%;
+            }
+
+            100% {
+                top: calc(100% - 4px);
+            }
+        }
+
+        /* Buttons */
+        .btn-wrapper {
+            position: relative;
+            margin-top: 2rem;
+            transform: translateZ(50px);
+            display: none;
+            z-index: 30;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.2);
+        }
+
+        button {
+            background: rgba(10, 20, 15, 0.8);
+            color: var(--text-main);
+            border: 1px solid transparent;
+            padding: 1rem 2.5rem;
+            font-size: 1.1rem;
+            font-weight: 800;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Space Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Base Emerald Gradient */
+        button::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: conic-gradient(from 0deg, #16a34a, var(--neon-accent), #16a34a);
+            z-index: -2;
+            animation: spinBg 4s linear infinite;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Hover Amber Gradient (Fades in) */
+        button .amber-bg-layer {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: conic-gradient(from 0deg, #d97706, var(--neon-secondary), #d97706);
+            z-index: -1;
+            animation: spinBg 3s linear infinite reverse;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        button::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            background: rgba(10, 20, 15, 0.9);
+            z-index: -1;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        @keyframes spinBg {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .btn-wrapper:hover button .amber-bg-layer {
+            opacity: 1;
+            /* Fade in amber */
+        }
+
+        .btn-wrapper:hover button {
+            color: var(--neon-secondary);
+            text-shadow: 0 0 8px rgba(255, 204, 51, 0.6);
+            box-shadow: 0 0 15px rgba(255, 204, 51, 0.2);
+        }
+
+        .btn-wrapper:hover button::after {
+            background: rgba(255, 204, 51, 0.08);
+            /* slight amber transparency */
+        }
+
+
+        /* Results Display */
+        #result-card {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border-radius: 4px;
+            background: rgba(10, 20, 15, 0.6);
+            border: 1px solid var(--hud-blue);
+            transform: translateZ(45px);
+            display: none;
+            animation: fadeIn 0.5s ease forwards;
+            position: relative;
+            z-index: 30;
+            box-shadow: inset 0 0 20px rgba(74, 222, 128, 0.05);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateZ(20px) translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateZ(45px) translateY(0);
+            }
+        }
+
+        .result-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--neon-secondary);
+            /* Amber pops better for results */
+            text-shadow: 0 0 15px rgba(255, 204, 51, 0.4);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .confidence-bar-bg {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(74, 222, 128, 0.2);
+        }
+
+        .confidence-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--neon-accent), var(--neon-secondary));
+            box-shadow: 0 0 10px var(--neon-accent);
+            transition: width 1.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .confidence-text {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.1rem;
+            color: var(--text-main);
+            margin-top: 0.5rem;
+            text-align: right;
+            font-weight: 700;
+            text-shadow: 0 0 5px rgba(74, 222, 128, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="scroll-progress" id="scroll-progress"></div>
+
+    <div class="ambient-bg"></div>
+
+    <div id="seed-container"></div>
+
+    <section class="hero-section">
+        <div class="glass-panel" id="panel">
+            <div class="corner-bracket bracket-tl"></div>
+            <div class="corner-bracket bracket-tr"></div>
+            <div class="corner-bracket bracket-bl"></div>
+            <div class="corner-bracket bracket-br"></div>
+
+            <h1 class="stagger-item">Tomato<span>AI</span></h1>
+
+            <form id="upload-form" class="stagger-item">
+                <div class="upload-zone" id="drop-zone">
+                    <div class="upload-icon">⎈</div>
+                    <div class="upload-text" id="upload-text">Initialize Scan Sequence</div>
+                    <div class="upload-hint" id="upload-hint">Drag & Drop specimen or click to browse</div>
+                    <input type="file" id="file-input" name="file" accept="image/*" hidden>
+                </div>
+
+                <div id="preview-container" style="display: none;">
+                    <img id="image-preview" src="" alt="Specimen Preview" title="Click to change image">
+                    <div class="scanner-bar" id="scanner-bar"></div>
+                </div>
+
+                <div class="btn-wrapper" id="btn-wrapper">
+                    <button type="submit" id="analyze-btn">
+                        <div class="amber-bg-layer"></div>
+                        <span>Engage Analysis</span>
+                    </button>
+                </div>
+            </form>
+
+            <div id="result-card" class="stagger-item">
+                <div class="result-label">Identified Anomaly</div>
+                <div class="result-value" id="disease-name">--</div>
+
+                <div class="result-label" style="margin-top: 1rem;">Confidence Matrix</div>
+                <div class="confidence-bar-bg">
+                    <div class="confidence-bar-fill" id="confidence-bar"></div>
+                </div>
+                <div class="confidence-text" id="confidence-text">00.00%</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features-section">
+        <div class="feature-card observer-flip">
+            <div class="corner-bracket bracket-tl"></div>
+            <div class="corner-bracket bracket-br"></div>
+            <h3>Pathogen Matrix</h3>
+            <p>Utilizing high-resolution neural networks, the system scans cellular structures to isolate irregularities
+                mimicking known pathogens within milliseconds.</p>
+        </div>
+        <div class="feature-card observer-flip">
+            <div class="corner-bracket bracket-tl"></div>
+            <div class="corner-bracket bracket-br"></div>
+            <h3>Cellular Density Range</h3>
+            <p>Maps the chlorophyll dispersion model against multi-layered environmental factors, cross-referencing over
+                10 distinct viral and bacterial markers.</p>
+        </div>
+        <div class="feature-card observer-flip">
+            <div class="corner-bracket bracket-tl"></div>
+            <div class="corner-bracket bracket-br"></div>
+            <h3>Propagation Projection</h3>
+            <p>Predicts the propagation probability across adjacent bio-clusters outlining a comprehensive quarantine
+                timeline for affected local flora.</p>
+        </div>
+    </section>
+
+    <script>
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.getElementById('preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const btnWrapper = document.getElementById('btn-wrapper');
+        const uploadForm = document.getElementById('upload-form');
+        const resultCard = document.getElementById('result-card');
+        const diseaseName = document.getElementById('disease-name');
+        const confidenceBar = document.getElementById('confidence-bar');
+        const confidenceText = document.getElementById('confidence-text');
+        const panel = document.getElementById('panel');
+        const scrollProgress = document.getElementById('scroll-progress');
+        const uploadText = document.getElementById('upload-text');
+        const uploadHint = document.getElementById('upload-hint');
+
+        // --- Botanical Particles Background (Drifting Seeds) ---
+        const seedContainer = document.getElementById('seed-container');
+        let winW = window.innerWidth;
+        let winH = window.innerHeight;
+        let seedArray = [];
+        const emerald = '#4ade80';
+        const amber = '#ffcc33';
+
+        class Seed {
+            constructor() {
+                this.x = Math.random() * winW;
+                this.y = Math.random() * winH + winH;
+
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = -Math.random() * 1.5 - 0.5;
+
+                this.el = document.createElement('div');
+                this.el.className = 'botanical-seed';
+                this.size = Math.random() * 4 + 2;
+                this.el.style.width = `${this.size}px`;
+                this.el.style.height = `${this.size}px`;
+
+                let color = Math.random() > 0.3 ? emerald : amber;
+                this.el.style.background = color;
+                this.el.style.boxShadow = `0 0 8px ${color}, 0 0 15px ${color}`;
+
+                seedContainer.appendChild(this.el);
+
+                setTimeout(() => { this.el.style.opacity = Math.random() * 0.4 + 0.1; }, Math.random() * 2000);
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.y < -50 || this.x < -50 || this.x > winW + 50) {
+                    this.y = winH + 50;
+                    this.x = Math.random() * winW;
+                }
+
+                this.el.style.transform = `translate(${this.x}px, ${this.y}px)`;
+            }
+        }
+
+        function initSeeds() {
+            seedContainer.innerHTML = '';
+            seedArray = [];
+            const count = Math.min(60, Math.floor((winW * winH) / 20000));
+            for (let i = 0; i < count; i++) {
+                const s = new Seed();
+                s.y = Math.random() * winH;
+                seedArray.push(s);
+            }
+        }
+
+        initSeeds();
+
+        function animateSeeds() {
+            seedArray.forEach(s => s.update());
+            requestAnimationFrame(animateSeeds);
+        }
+        animateSeeds();
+
+        let rTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(rTimeout);
+            rTimeout = setTimeout(() => {
+                winW = window.innerWidth;
+                winH = window.innerHeight;
+                initSeeds();
+            }, 300);
+        });
+
+        // --- Core UI & Scroll Events --- 
+        let tiltX = 0;
+        let tiltY = 0;
+        let scaleState = 1;
+
+        const observerOptions = {
+            threshold: 0.2,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const viewObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if (entry.target.classList.contains('glass-panel')) {
+                        entry.target.classList.add('stagger-in-view');
+                    } else if (entry.target.classList.contains('observer-flip')) {
+                        entry.target.classList.add('in-view');
+                    }
+                }
+            });
+        }, observerOptions);
+
+        viewObserver.observe(panel);
+        document.querySelectorAll('.observer-flip').forEach(el => viewObserver.observe(el));
+
+        window.addEventListener('scroll', () => {
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const scrollPercent = docHeight > 0 ? scrollTop / docHeight : 0;
+
+            scrollProgress.style.width = `${scrollPercent * 100}%`;
+
+            const panelRect = panel.getBoundingClientRect();
+            const panelCenter = panelRect.top + (panelRect.height / 2);
+            const viewCenter = window.innerHeight / 2;
+            const distance = Math.abs(viewCenter - panelCenter);
+
+            scaleState = Math.max(0.85, 1 - (distance / 2000));
+            updatePanelTransform();
+        }, { passive: true });
+
+        function updatePanelTransform() {
+            if (!panel.classList.contains('processing')) {
+                panel.style.transform = `scale(${scaleState}) rotateY(${tiltX}deg) rotateX(${tiltY}deg)`;
+            }
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            tiltX = (window.innerWidth / 2 - e.pageX) / 40;
+            tiltY = (window.innerHeight / 2 - e.pageY) / 40;
+            updatePanelTransform();
+        });
+
+        document.addEventListener('mouseleave', () => {
+            tiltX = 0;
+            tiltY = 0;
+            updatePanelTransform();
+        });
+
+        // --- Flow State Logic --- //
+        dropZone.addEventListener('click', () => fileInput.click());
+        imagePreview.addEventListener('click', () => fileInput.click());
+
+        ['dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', handleDrop);
+
+        function handleDrop(e) {
+            dropZone.classList.remove('dragover');
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length) {
+                fileInput.files = files;
+                handleFiles(files[0]);
+            }
+        }
+
+        fileInput.addEventListener('change', function () {
+            if (this.files && this.files[0]) {
+                handleFiles(this.files[0]);
+            }
+        });
+
+        function handleFiles(file) {
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    imagePreview.src = e.target.result;
+
+                    dropZone.style.display = 'none';
+                    previewContainer.style.display = 'flex';
+
+                    btnWrapper.style.display = 'block';
+                    resultCard.style.display = 'none';
+                    confidenceBar.style.width = '0%';
+                    confidenceText.textContent = '00.00%';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Form Submission
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!fileInput.files.length) return;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            btnWrapper.style.display = 'none';
+            resultCard.style.display = 'none';
+
+            // Trigger new Holographic Breathing/Scan logic
+            panel.classList.add('processing');
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Analysis failed');
+                }
+
+                const data = await response.json();
+
+                setTimeout(() => {
+                    panel.classList.remove('processing');
+                    showResults(data);
+                }, 2000);
+
+            } catch (error) {
+                panel.classList.remove('processing');
+                btnWrapper.style.display = 'block';
+                updatePanelTransform();
+                alert('CRITICAL ERROR: Analysis sequence interrupted.');
+                console.error(error);
+            }
+        });
+
+        function showResults(data) {
+            resultCard.style.display = 'block';
+            diseaseName.textContent = data.disease;
+
+            const confValueStr = data.confidence ? data.confidence.replace('%', '') : '0';
+            const confValue = parseFloat(confValueStr);
+
+            setTimeout(() => {
+                confidenceBar.style.width = `${confValue}%`;
+
+                let start = 0;
+                const duration = 1500;
+                const startTime = performance.now();
+
+                function updateNumber(currentTime) {
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const easeProgress = 1 - Math.pow(1 - progress, 3);
+                    const currentVal = start + (confValue - start) * easeProgress;
+
+                    let textVal = currentVal.toFixed(2);
+                    if (textVal.length < 5 && currentVal < 10) textVal = '0' + textVal;
+                    confidenceText.textContent = `${textVal}%`;
+
+                    if (progress < 1) {
+                        requestAnimationFrame(updateNumber);
+                    }
+                }
+                requestAnimationFrame(updateNumber);
+            }, 100);
+
+            btnWrapper.style.display = 'block';
+            analyzeBtn.querySelector('span').textContent = 'Re-Initialize Scan';
+        }
+
+    </script>
+</body>
+
+</html>
